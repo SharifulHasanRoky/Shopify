@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTM Data Layer Tracker - Shopify App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f6f6f7; color: #1a1a1a; }
+    .header { background: #1a1a2e; color: white; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }
+    .header h1 { font-size: 20px; font-weight: 600; }
+    .header .badge { background: #00d4aa; color: #1a1a2e; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
+    .card { background: white; border-radius: 12px; padding: 28px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .card h2 { font-size: 17px; margin-bottom: 16px; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
+    .card h2 .icon { font-size: 20px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input { width: 100%; padding: 12px 16px; border: 1.5px solid #e0e0e0; border-radius: 8px; font-size: 15px; transition: border-color 0.2s; }
+    .form-group input:focus { outline: none; border-color: #5c6ac4; box-shadow: 0 0 0 3px rgba(92,106,196,0.1); }
+    .form-group .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #5c6ac4; color: white; }
+    .btn-primary:hover { background: #4a58b0; transform: translateY(-1px); }
+    .btn-secondary { background: #e8e9f0; color: #5c6ac4; }
+    .btn-secondary:hover { background: #d8daf0; }
+    .btn-success { background: #00d4aa; color: #1a1a2e; }
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .status-item { padding: 16px; background: #f8f9fa; border-radius: 8px; text-align: center; }
+    .status-item .value { font-size: 24px; font-weight: 700; color: #5c6ac4; }
+    .status-item .label { font-size: 12px; color: #888; margin-top: 4px; text-transform: uppercase; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .status-dot.active { background: #00d4aa; animation: pulse 2s infinite; }
+    .status-dot.inactive { background: #ff6b6b; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .toggle { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+    .toggle:last-child { border: none; }
+    .toggle-label { font-size: 14px; color: #333; }
+    .toggle-switch { position: relative; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-switch .slider { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; border-radius: 24px; cursor: pointer; transition: 0.3s; }
+    .toggle-switch .slider:before { content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+    .toggle-switch input:checked + .slider { background: #5c6ac4; }
+    .toggle-switch input:checked + .slider:before { transform: translateX(20px); }
+    .events-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .event-tag { padding: 6px 12px; background: #f0f1ff; color: #5c6ac4; border-radius: 6px; font-size: 12px; font-weight: 500; }
+    .alert { padding: 14px 18px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+    .alert-success { background: #e6fff8; color: #00875a; border: 1px solid #b3ffe6; }
+    .alert-info { background: #e8f4fd; color: #0065a3; border: 1px solid #b3d9f2; }
+    .actions { display: flex; gap: 12px; margin-top: 20px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📊 GTM Data Layer Tracker</h1>
+    <span class="badge"><span class="status-dot active"></span> ALWAYS ON</span>
+  </div>
+
+  <div class="container">
+    <!-- Status Alert -->
+    <div id="alert" class="alert hidden"></div>
+
+    <!-- Status Overview -->
+    <div class="card">
+      <h2><span class="icon">⚡</span> Tracking Status</h2>
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="value" id="status-datalayer">--</div>
+          <div class="label">Data Layer</div>
+        </div>
+        <div class="status-item">
+          <div class="value" id="status-serverside">--</div>
+          <div class="label">Server-Side</div>
+        </div>
+        <div class="status-item">
+          <div class="value" id="status-webhooks">--</div>
+          <div class="label">Webhooks Active</div>
+        </div>
+        <div class="status-item">
+          <div class="value" id="status-gtm">--</div>
+          <div class="label">GTM Container</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GTM Configuration -->
+    <div class="card">
+      <h2><span class="icon">🏷️</span> Google Tag Manager</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:16px;">
+        Just enter your GTM Container ID below. Once connected, ALL ecommerce data will flow automatically through the data layer.
+      </p>
+      <div class="form-group">
+        <label>GTM Container ID</label>
+        <input type="text" id="gtm-id" placeholder="GTM-XXXXXXX" />
+        <div class="hint">Find this in your GTM account → Admin → Container Settings</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveSettings()">Save & Activate</button>
+        <button class="btn btn-secondary" onclick="reinstallScripts()">Reinstall Scripts</button>
+      </div>
+    </div>
+
+    <!-- GA4 Server-Side Config -->
+    <div class="card">
+      <h2><span class="icon">📡</span> Server-Side Tracking (GA4)</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:16px;">
+        Optional: Configure GA4 Measurement Protocol for server-side event tracking. This captures checkout and order events even if client-side scripts are blocked.
+      </p>
+      <div class="form-group">
+        <label>GA4 Measurement ID</label>
+        <input type="text" id="ga4-id" placeholder="G-XXXXXXXXXX" />
+      </div>
+      <div class="form-group">
+        <label>GA4 API Secret</label>
+        <input type="text" id="ga4-secret" placeholder="Your API secret from GA4 Admin" />
+        <div class="hint">GA4 → Admin → Data Streams → Measurement Protocol API secrets</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveServerSide()">Save Server Config</button>
+      </div>
+    </div>
+
+    <!-- Tracking Options -->
+    <div class="card">
+      <h2><span class="icon">⚙️</span> Tracking Settings</h2>
+      <div class="toggle">
+        <span class="toggle-label">Enable Data Layer (Client-Side)</span>
+        <label class="toggle-switch"><input type="checkbox" id="opt-datalayer" checked /><span class="slider"></span></label>
+      </div>
+      <div class="toggle">
+        <span class="toggle-label">Enable Server-Side Tracking</span>
+        <label class="toggle-switch"><input type="checkbox" id="opt-serverside" checked /><span class="slider"></span></label>
+      </div>
+      <div class="toggle">
+        <span class="toggle-label">Track Checkout Pages</span>
+        <label class="toggle-switch"><input type="checkbox" id="opt-checkout" checked /><span class="slider"></span></label>
+      </div>
+      <div class="toggle">
+        <span class="toggle-label">Track User/Customer Data</span>
+        <label class="toggle-switch"><input type="checkbox" id="opt-userdata" checked /><span class="slider"></span></label>
+      </div>
+      <div class="toggle">
+        <span class="toggle-label">Enhanced Ecommerce</span>
+        <label class="toggle-switch"><input type="checkbox" id="opt-enhanced" checked /><span class="slider"></span></label>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveOptions()">Save Options</button>
+      </div>
+    </div>
+
+    <!-- Events Being Tracked -->
+    <div class="card">
+      <h2><span class="icon">📋</span> Events Being Tracked</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:12px;">All these events automatically push to the dataLayer when a visitor performs the action:</p>
+      <div class="events-list">
+        <span class="event-tag">page_view</span>
+        <span class="event-tag">view_item</span>
+        <span class="event-tag">view_item_list</span>
+        <span class="event-tag">select_item</span>
+        <span class="event-tag">add_to_cart</span>
+        <span class="event-tag">remove_from_cart</span>
+        <span class="event-tag">view_cart</span>
+        <span class="event-tag">begin_checkout</span>
+        <span class="event-tag">add_shipping_info</span>
+        <span class="event-tag">add_payment_info</span>
+        <span class="event-tag">purchase</span>
+        <span class="event-tag">search</span>
+        <span class="event-tag">sign_up</span>
+        <span class="event-tag">user_data</span>
+        <span class="event-tag">refund</span>
+        <span class="event-tag">cart_updated</span>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:#f8f9fa;border-radius:8px;font-size:12px;color:#666;">
+        <strong>Server-Side Events:</strong> orders/create, orders/paid, checkouts/create, checkouts/update, carts/update, customers/create, refunds/create — all tracked via Shopify webhooks even if client JS is blocked.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Get shop from URL params
+    var params = new URLSearchParams(window.location.search);
+    var shop = params.get('shop') || '';
+
+    // Show install success message
+    if (params.get('installed') === 'true') {
+      showAlert('success', '✅ App installed successfully! Data layer and webhooks are now active.');
+    }
+
+    // Load current settings on page load
+    loadSettings();
+
+    function loadSettings() {
+      if (!shop) return;
+      fetch('/api/status?shop=' + encodeURIComponent(shop))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          document.getElementById('status-datalayer').textContent = data.dataLayerActive ? '✅ Active' : '❌ Off';
+          document.getElementById('status-serverside').textContent = data.serverSideActive ? '✅ Active' : '❌ Off';
+          document.getElementById('status-webhooks').textContent = data.webhookCount || '0';
+          document.getElementById('status-gtm').textContent = data.gtmContainerId || 'Not Set';
+
+          if (data.gtmContainerId && data.gtmContainerId !== 'Not configured') {
+            document.getElementById('gtm-id').value = data.gtmContainerId;
+          }
+          if (data.settings) {
+            document.getElementById('opt-datalayer').checked = data.settings.enableDataLayer !== false;
+            document.getElementById('opt-serverside').checked = data.settings.enableServerSide !== false;
+            document.getElementById('opt-checkout').checked = data.settings.trackCheckout !== false;
+            document.getElementById('opt-userdata').checked = data.settings.trackUserData !== false;
+            document.getElementById('opt-enhanced').checked = data.settings.enableEnhancedEcommerce !== false;
+            if (data.settings.ga4MeasurementId) document.getElementById('ga4-id').value = data.settings.ga4MeasurementId;
+            if (data.settings.ga4ApiSecret) document.getElementById('ga4-secret').value = data.settings.ga4ApiSecret;
+          }
+        })
+        .catch(function() {
+          showAlert('info', 'Enter your shop domain as ?shop=your-store.myshopify.com to connect.');
+        });
+    }
+
+    function saveSettings() {
+      var gtmId = document.getElementById('gtm-id').value.trim();
+      if (!gtmId) { showAlert('info', 'Please enter a GTM Container ID (e.g., GTM-XXXXXXX)'); return; }
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: shop, gtmContainerId: gtmId })
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            showAlert('success', '✅ GTM Container ' + gtmId + ' connected! All tracking is now live.');
+            loadSettings();
+          }
+        });
+    }
+
+    function saveServerSide() {
+      var ga4Id = document.getElementById('ga4-id').value.trim();
+      var ga4Secret = document.getElementById('ga4-secret').value.trim();
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: shop, settings: { ga4MeasurementId: ga4Id, ga4ApiSecret: ga4Secret } })
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) showAlert('success', '✅ Server-side tracking configured!');
+        });
+    }
+
+    function saveOptions() {
+      var settings = {
+        enableDataLayer: document.getElementById('opt-datalayer').checked,
+        enableServerSide: document.getElementById('opt-serverside').checked,
+        trackCheckout: document.getElementById('opt-checkout').checked,
+        trackUserData: document.getElementById('opt-userdata').checked,
+        enableEnhancedEcommerce: document.getElementById('opt-enhanced').checked
+      };
+      fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: shop, settings: settings })
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) showAlert('success', '✅ Tracking options saved!');
+        });
+    }
+
+    function reinstallScripts() {
+      fetch('/api/reinstall-scripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shop: shop })
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            showAlert('success', '✅ Scripts and webhooks reinstalled successfully!');
+            loadSettings();
+          } else {
+            showAlert('info', 'Failed to reinstall: ' + (data.error || 'Unknown error'));
+          }
+        });
+    }
+
+    function showAlert(type, message) {
+      var el = document.getElementById('alert');
+      el.className = 'alert alert-' + type;
+      el.textContent = message;
+      el.classList.remove('hidden');
+      setTimeout(function() { el.classList.add('hidden'); }, 5000);
+    }
+  </script>
+</body>
+</html>
